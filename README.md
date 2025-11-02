@@ -1,5 +1,8 @@
 ## Commit Logs
 
+**1.7.4**
++ [fixed] update deploy.yml (as second update breaks the page)
+
 **1.7.3**
 + [fixed] revert configs
 

@@ -49,10 +49,12 @@ jobs:
       - name: Delete old Pages deployments
         run: |
           echo "Deleting all deployments in github-pages environment..."
-          deployments=$(gh deployment list --env github-pages --json id -q '.[].id')
-          for id in $deployments; do
-            gh deployment delete $id -y
-          done || echo "No previous deployments found."
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            /repos/${GITHUB_REPOSITORY}/deployments?environment=github-pages \
+            | jq -r '.[].id' \
+            | xargs -r -n1 gh api -X DELETE -H "Authorization: token $GITHUB_TOKEN" /repos/${GITHUB_REPOSITORY}/deployments/
 
       # 6 Clean old build & install dependencies
       - name: Clean & Install
