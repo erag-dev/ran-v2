@@ -2,44 +2,83 @@ name: Deploy Vite + React to GitHub Pages
 
 on:
   push:
-    branches: ['main']      # Deploy on main branch push
-  workflow_dispatch:        # Allow manual trigger
+    branches: ['main']
+  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-    steps:
-      # 1. Checkout repo
-      - uses: actions/checkout@v4
+      url: ${{ steps.deployment.outputs.page_url }}
 
-      # 2. Setup Node
-      - uses: actions/setup-node@v4
+    steps:
+      # 1 Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2 Setup Node
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      # 3. Clean old build & rebuild
-      - name: Clean old build & rebuild
+      # 3 Install GitHub CLI
+      - name: Install GitHub CLI
+        run: |
+          sudo apt update
+          sudo apt install gh -y
+
+      # 4 Authenticate GitHub CLI
+      - name: Authenticate gh CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh auth login --with-token <<< $GITHUB_TOKEN
+
+      # 5 Clean previous Pages deployments
+      - name: Delete old Pages deployments
+        run: |
+          echo "Deleting all deployments in github-pages environment..."
+          deployments=$(gh deployment list --env github-pages --json id -q '.[].id')
+          for id in $deployments; do
+            gh deployment delete $id -y
+          done || echo "No previous deployments found."
+
+      # 6 Clean old build & install dependencies
+      - name: Clean & Install
         run: |
           rm -rf dist
           npm ci
-          npm run build
 
-      # 4. Configure GitHub Pages
-      - uses: actions/configure-pages@v4
+      # 7 Build project
+      - name: Build project
+        run: npm run build
 
-      # 5. Upload dist/ as artifact
-      - uses: actions/upload-pages-artifact@v3
+      # 8 Debug: list build files
+      - name: List build files
+        run: ls -R dist
+
+      # 9 Configure GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      # 10 Upload dist contents
+      - name: Upload dist folder
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'       # Important: the contents of dist, not the folder itself
+          path: dist
 
-      # 6. Deploy to GitHub Pages
-      - id: deployment
+      # 11 Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
