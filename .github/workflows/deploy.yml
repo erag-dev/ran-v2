@@ -2,8 +2,8 @@ name: Deploy Vite + React to GitHub Pages
 
 on:
   push:
-    branches: ['main']
-  workflow_dispatch:
+    branches: ['main']      # Trigger on push to main branch
+  workflow_dispatch:        # Allow manual trigger
 
 permissions:
   contents: read
@@ -22,65 +22,42 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      # 1 Checkout repo
+      # 1️⃣ Checkout the repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2 Setup Node
+      # 2️⃣ Setup Node
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      # 3 Install GitHub CLI
-      - name: Install GitHub CLI
-        run: |
-          sudo apt update
-          sudo apt install gh -y
-
-      # 4 Authenticate GitHub CLI
-      - name: Authenticate gh CLI
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh auth login --with-token <<< $GITHUB_TOKEN
-
-      # 5 Clean previous Pages deployments
-      - name: Delete old Pages deployments
-        run: |
-          echo "Deleting all deployments in github-pages environment..."
-          gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            /repos/${GITHUB_REPOSITORY}/deployments?environment=github-pages \
-            | jq -r '.[].id' \
-            | xargs -r -n1 gh api -X DELETE -H "Authorization: token $GITHUB_TOKEN" /repos/${GITHUB_REPOSITORY}/deployments/
-
-      # 6 Clean old build & install dependencies
+      # 3️⃣ Clean previous build & install deps
       - name: Clean & Install
         run: |
           rm -rf dist
           npm ci
 
-      # 7 Build project
+      # 4️⃣ Build the project
       - name: Build project
         run: npm run build
 
-      # 8 Debug: list build files
+      # 5️⃣ Show build contents (debug)
       - name: List build files
         run: ls -R dist
 
-      # 9 Configure GitHub Pages
+      # 6️⃣ Configure GitHub Pages
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # 10 Upload dist contents
+      # 7️⃣ Upload dist contents as artifact
       - name: Upload dist folder
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist          # ✅ Upload contents, not the folder itself
 
-      # 11 Deploy to GitHub Pages
+      # 8️⃣ Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
